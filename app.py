@@ -17,7 +17,7 @@ hide_table_row_index = """
             tbody th {display:none}
             </style>
             """
-key = os.environ.get('key')
+key = os.environ.get('KEY')
 headers = {"x-api-key":key}
 
 @st.cache
@@ -45,7 +45,7 @@ st.markdown("#")
 types = pd.concat([pd.Series(['Select All']), df['Workout Type'].drop_duplicates()])
 types_choice = st.sidebar.selectbox('Workout Type',types)
 start_date = st.sidebar.date_input('First Date',min(df['start_dt']).to_pydatetime())
-end_date = st.sidebar.date_input('Last Date',max(df['end_dt']).to_pydatetime())
+end_date = st.sidebar.date_input('Last Date',datetime.datetime.today())
 
 config = {'displayModeBar': False}
 
