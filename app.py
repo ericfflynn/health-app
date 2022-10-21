@@ -69,7 +69,7 @@ if types_choice == 'Select All':
 	st.markdown("#")
 	col1_2, col2_2 = st.columns(2)
 	with col1_2:
-		st.plotly_chart(bar_chart, config=config)
+		st.write(bar_chart, config=config)
 	with col2_2:
 		st.dataframe(dfdis[['Workout Type','Date','Duration','Avg BPM','Calories']])
 else:
@@ -92,7 +92,7 @@ else:
 	st.markdown("#")
 	col1_2, col2_2 = st.columns(2)
 	with col1_2:
-		st.plotly_chart(bar_chart, config=config)
+		st.write(bar_chart, config=config)
 	with col2_2:
 		st.dataframe(dfdis[['Workout Type','Date','Duration','Avg BPM','Calories']])
 
