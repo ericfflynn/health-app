@@ -2,7 +2,6 @@ import streamlit as st
 import requests
 import pandas as pd
 import datetime
-import plotly.express as px
 import os 
 import altair as alt
 
@@ -58,18 +57,19 @@ def get_data():
 df = get_data()
 
 st.title("Personal Fitness Dashboard")
-st.markdown("#")
 types = pd.concat([pd.Series(['Select All']), df['Workout Type'].drop_duplicates()])
+cats = pd.concat([pd.Series(['Select All']), df['Category'].drop_duplicates()])
+cat_choice = st.sidebar.selectbox('Workout Category',cats)
 types_choice = st.sidebar.selectbox('Workout Type',types)
 start_date = st.sidebar.date_input('Start Date',min(df['start_dt']).to_pydatetime())
 end_date = st.sidebar.date_input('End Date',datetime.datetime.today())
 
 config = {'displayModeBar': False}
 
-if types_choice == 'Select All':
+if types_choice == 'Select All' and cat_choice == 'Select All':
 	dfdis = df.query("start_dt >= @start_date & end_dt <= @end_date")
 else:
-	dfdis = df.query("start_dt >= @start_date & end_dt <= @end_date & `Workout Type` == @types_choice")	
+	dfdis = df.query("start_dt >= @start_date & end_dt <= @end_date & `Category` == @cat_choice")	
 
 totalworkouts = len(dfdis)
 maxhr = dfdis['Max BPM'].max()
