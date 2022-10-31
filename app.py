@@ -2,6 +2,7 @@ import streamlit as st
 import requests
 import pandas as pd
 import datetime
+import plotly.express as px
 import os 
 import altair as alt
 
@@ -53,23 +54,37 @@ def get_data():
 	df['Category'] = df.apply(f,axis=1)
 	return df
 
-
 df = get_data()
 
 st.title("Personal Fitness Dashboard")
+
+# cats = pd.concat([pd.Series(['Select All']), df['Category'].drop_duplicates()])
+# cats_choice = st.sidebar.selectbox('Workout Category',cats)
+# if cats_choice == 'Select All':
+# 	types = pd.concat([pd.Series(['Select All']), df['Workout Type'].drop_duplicates()])
+# 	types_choice = st.sidebar.selectbox('Workout Type',types)
+# 	start_date = st.sidebar.date_input('Start Date',min(df['start_dt']).to_pydatetime())
+# 	end_date = st.sidebar.date_input('End Date',datetime.datetime.today())
+# 	if types_choice =='Select All':
+# 		dfdis = df.query("start_dt >= @start_date & end_dt <= @end_date")
+# 	else:
+# 		dfdis = df.query("start_dt >= @start_date & end_dt <= @end_date & 'Workout Type' == @types_choice")	
+# else:
+# 	types = pd.concat([pd.Series(['Select All']),df.query("`Category` == @cats_choice")['Workout Type'].drop_duplicates()])
+# 	types_choice = st.sidebar.selectbox('Workout Type',types)
+# 	start_date = st.sidebar.date_input('Start Date',min(df['start_dt']).to_pydatetime())
+# 	end_date = st.sidebar.date_input('End Date',datetime.datetime.today())
+# 	dfdis = df.query("start_dt >= @start_date & end_dt <= @end_date & `Category` == @cats_choice & 'Workout Type' == @types_choice")	
+
 types = pd.concat([pd.Series(['Select All']), df['Workout Type'].drop_duplicates()])
-cats = pd.concat([pd.Series(['Select All']), df['Category'].drop_duplicates()])
-cat_choice = st.sidebar.selectbox('Workout Category',cats)
 types_choice = st.sidebar.selectbox('Workout Type',types)
 start_date = st.sidebar.date_input('Start Date',min(df['start_dt']).to_pydatetime())
 end_date = st.sidebar.date_input('End Date',datetime.datetime.today())
 
-config = {'displayModeBar': False}
-
-if types_choice == 'Select All' and cat_choice == 'Select All':
+if types_choice == 'Select All':
 	dfdis = df.query("start_dt >= @start_date & end_dt <= @end_date")
 else:
-	dfdis = df.query("start_dt >= @start_date & end_dt <= @end_date & `Category` == @cat_choice")	
+	dfdis = df.query("start_dt >= @start_date & end_dt <= @end_date & `Workout Type` == @types_choice")	
 
 totalworkouts = len(dfdis)
 maxhr = dfdis['Max BPM'].max()
@@ -80,7 +95,7 @@ col1, col2, col3, col4 = st.columns(4)
 with col1:
 	st.metric(label='Total Workouts', value = int(totalworkouts))
 with col2:
-	st.metric(label='Max BPM', value = maxhr)
+	st.metric(label='Max BPM', value = int(maxhr))
 with col3:
 	st.metric(label='Avg Calories', value = int(avgcalories))
 with col4:
