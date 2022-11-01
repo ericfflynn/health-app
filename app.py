@@ -27,7 +27,7 @@ hide_table_row_index = """
 key = os.environ.get('KEY')
 headers = {"x-api-key":key}
 
-@st.cache
+@st.cache(ttl=21600)
 def get_data():
 	result = requests.get('https://wz52lc2sa0.execute-api.us-east-2.amazonaws.com/includeget/workouts',headers=headers)
 	data = result.json()
