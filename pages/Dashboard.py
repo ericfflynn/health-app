@@ -29,28 +29,20 @@ hide_table_row_index = """
 key = os.environ.get('KEY')
 headers = {"x-api-key":key}
 
-conn = pymysql.connect(
-	host='database-1.cw1pd3mihy4s.us-east-2.rds.amazonaws.com',
-    user='admin',
-    password='mysqldbpw',
-    db='Health_Data'
-	)
-cursor = conn.cursor()
-
 
 @st.cache(ttl=21600)
 def get_data():
 	result = requests.get('https://wz52lc2sa0.execute-api.us-east-2.amazonaws.com/includeget/workouts',headers=headers)
 	data = result.json()
-	df = pd.DataFrame.from_records(data)
+	df = pd.read_json(data)
 	for i in ['start','end']:
-		df[i+'_dt'] = df[i].apply(lambda x: datetime.datetime.strptime(x,"%Y-%m-%d %H:%M:%S"))
+		df[i+'_dt'] = df[i].apply(lambda x: datetime.datetime.strptime(x[:-5],"%Y-%m-%dT%H:%M:%S"))
 		df[i] = df[i].apply(lambda x: x[0:10])
 	df['Duration'] = df['end_dt'] - df['start_dt']
 	df['Duration'] = df['Duration'].apply(lambda x: str(x)[-8:])
 	df.sort_values(by=['start'], ascending=False, inplace=True)
 	df.reset_index(inplace=True, drop=True)
-	df.rename(columns={'name':'Workout Type','start':'Date','activeEnergy':'Calories','avgHR':'Avg BPM','maxHR':'Max BPM'},inplace=True)
+	df.rename(columns={'name':'Workout Type','start':'Date','activeEnergy.qty':'Calories','avgHeartRate.qty':'Avg BPM','maxHeartRate.qty':'Max BPM'},inplace=True)
 	for i in ['Calories','Avg BPM']:
 		df[i] = df[i].apply(lambda x: int(x))
 	df['Month'] = df['start_dt'].apply(lambda x: x.strftime("%Y-%m"))
@@ -65,30 +57,6 @@ def get_data():
 	df['Category'] = df.apply(f,axis=1)
 	return df
 
-# def get_data():
-# 	query = "SELECT name, start, end, `activeEnergy.qty`, `avgHeartRate.qty`, `maxHeartRate.qty`, BodyPart, FROM Workouts"
-# 	df = pd.read_sql(query, conn)
-# 	for i in ['start','end']:
-# 		df[i+'_dt'] = df[i].apply(lambda x: datetime.datetime.strptime(x,"%Y-%m-%d %H:%M:%S"))
-# 		df[i] = df[i].apply(lambda x: x[0:10])
-# 	df['Duration'] = df['end_dt'] - df['start_dt']
-# 	df['Duration'] = df['Duration'].apply(lambda x: str(x)[-8:])
-# 	df.sort_values(by=['start'], ascending=False, inplace=True)
-# 	df.reset_index(inplace=True, drop=True)
-# 	df.rename(columns={'name':'Workout Type','start':'Date','activeEnergy':'Calories','avgHR':'Avg BPM','maxHR':'Max BPM'},inplace=True)
-# 	for i in ['Calories','Avg BPM']:
-# 		df[i] = df[i].apply(lambda x: int(x))
-# 	df['Month'] = df['start_dt'].apply(lambda x: x.strftime("%Y-%m"))
-# 	def f(row):
-# 		if row['Workout Type'] in ['Traditional Strength Training', 'Functional Strength Training'] :
-# 			val = 'Strength Training'
-# 		elif row['Workout Type'] in ['Tennis','Golf']:
-# 			val = 'Sport'
-# 		else:
-# 			val = 'Cardio/Core'
-# 		return val
-# 	df['Category'] = df.apply(f,axis=1)
-# 	return df
 df = get_data()
 
 
