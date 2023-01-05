@@ -25,7 +25,7 @@ if Access == os.environ.get('PASSWORD'):
 
 
 	def StoreData():
-		query="SELECT name, start, BodyPart FROM Workouts WHERE name like 'Traditional Strength Training' ORDER BY start DESC"
+		query="SELECT name, start, end, BodyPart FROM Workouts WHERE name like 'Traditional Strength Training' ORDER BY start DESC"
 		tdf = pd.read_sql(query, conn)
 		return tdf
 	tdf = StoreData()
@@ -59,3 +59,21 @@ if Access == os.environ.get('PASSWORD'):
 				UpdateBodyPart(start)
 			except:
 				st.error("Make Sure to select a workout")
+
+
+
+	def DelWorkout(start):
+		cursor.execute("DELETE FROM Workouts WHERE start = %s",(start))
+		conn.commit()
+		st.success("Row Deleted")
+
+	with st.form("Delete Workout", clear_on_submit=True):
+		if st.form_submit_button("Delete"):
+			try:
+				DelWorkout(start)
+			except:
+				st.error("Make Sure to select a workout")
+
+
+
+

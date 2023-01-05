@@ -6,6 +6,8 @@ import plotly.express as px
 import os 
 import altair as alt
 import pymysql
+from st_aggrid import AgGrid, GridOptionsBuilder, ColumnsAutoSizeMode
+import json
 
 st.set_page_config(
     page_title="Fitness Dashboard: Eric Flynn",
@@ -29,20 +31,59 @@ hide_table_row_index = """
 key = os.environ.get('KEY')
 headers = {"x-api-key":key}
 
+def sql_connect():
+	global conn
+	conn = pymysql.connect(
+	host=os.environ.get('HOST'),
+    user=os.environ.get('USER'),
+    password=os.environ.get('DBPW'),
+    db=os.environ.get('DB')
+	)
+	cursor = conn.cursor()
+
+
+
+
+# @st.cache(ttl=21600)
+# def get_data():
+# 	result = requests.get('https://wz52lc2sa0.execute-api.us-east-2.amazonaws.com/includeget/workouts',headers=headers)
+# 	data = result.json()
+# 	df = pd.read_json(data)
+# 	for i in ['start','end']:
+# 		df[i+'_dt'] = df[i].apply(lambda x: datetime.datetime.strptime(x[:-5],"%Y-%m-%dT%H:%M:%S"))
+# 		df[i] = df[i].apply(lambda x: x[0:10])
+# 	df['Duration'] = df['end_dt'] - df['start_dt']
+# 	df['Duration'] = df['Duration'].apply(lambda x: str(x)[-8:])
+# 	df.sort_values(by=['start'], ascending=False, inplace=True)
+# 	df.reset_index(inplace=True, drop=True)
+# 	df.rename(columns={'name':'Workout Type','start':'Date','activeEnergy.qty':'Calories','avgHeartRate.qty':'Avg BPM','maxHeartRate.qty':'Max BPM'},inplace=True)
+# 	for i in ['Calories','Avg BPM']:
+# 		df[i] = df[i].apply(lambda x: int(x))
+# 	df['Month'] = df['start_dt'].apply(lambda x: x.strftime("%Y-%m"))
+# 	def f(row):
+# 		if row['Workout Type'] in ['Traditional Strength Training', 'Functional Strength Training'] :
+# 			val = 'Strength Training'
+# 		elif row['Workout Type'] in ['Tennis','Golf']:
+# 			val = 'Sport'
+# 		else:
+# 			val = 'Cardio/Core'
+# 		return val
+# 	df['Category'] = df.apply(f,axis=1)
+# 	return df
 
 @st.cache(ttl=21600)
 def get_data():
-	result = requests.get('https://wz52lc2sa0.execute-api.us-east-2.amazonaws.com/includeget/workouts',headers=headers)
-	data = result.json()
-	df = pd.read_json(data)
+	sql_connect()
+	query = "SELECT name, start, end, `activeEnergy.qty`, `avgHeartRate.qty`, `maxHeartRate.qty`, heartRateData, BodyPart FROM Workouts WHERE start >= '2022-01-01'"
+	df = pd.read_sql(query, conn)
 	for i in ['start','end']:
-		df[i+'_dt'] = df[i].apply(lambda x: datetime.datetime.strptime(x[:-5],"%Y-%m-%dT%H:%M:%S"))
-		df[i] = df[i].apply(lambda x: x[0:10])
+		df[i+'_dt'] = df[i].apply(lambda x: x.to_pydatetime())
+		df[i] = df[i].apply(lambda x: x.strftime("%Y-%m-%d"))
 	df['Duration'] = df['end_dt'] - df['start_dt']
 	df['Duration'] = df['Duration'].apply(lambda x: str(x)[-8:])
 	df.sort_values(by=['start'], ascending=False, inplace=True)
 	df.reset_index(inplace=True, drop=True)
-	df.rename(columns={'name':'Workout Type','start':'Date','activeEnergy.qty':'Calories','avgHeartRate.qty':'Avg BPM','maxHeartRate.qty':'Max BPM'},inplace=True)
+	df.rename(columns={'name':'Workout Type','start':'Date','activeEnergy.qty':'Calories','avgHeartRate.qty':'Avg BPM','maxHeartRate.qty':'Max BPM', 'BodyPart':'Body Part'},inplace=True)
 	for i in ['Calories','Avg BPM']:
 		df[i] = df[i].apply(lambda x: int(x))
 	df['Month'] = df['start_dt'].apply(lambda x: x.strftime("%Y-%m"))
@@ -55,6 +96,7 @@ def get_data():
 			val = 'Cardio/Core'
 		return val
 	df['Category'] = df.apply(f,axis=1)
+	conn.close()
 	return df
 
 df = get_data()
@@ -95,4 +137,40 @@ altbar = alt.Chart(dfdis).mark_bar().encode(
 	)
 
 st.altair_chart(altbar, use_container_width=True)
-st.write(dfdis[['Category','Workout Type','Date','Duration','Calories','Avg BPM','Max BPM']],use_container_width=True)
+#st.write(dfdis[['Category','Workout Type','Date','Duration','Calories','Avg BPM','Max BPM']],use_container_width=True)
+
+st.header("Single Workout Analysis")
+st.write('***')
+dfgrid = dfdis[['Workout Type', 'Date']]
+gd = GridOptionsBuilder.from_dataframe(dfgrid)
+gd.configure_pagination(enabled=True, paginationAutoPageSize=False,paginationPageSize=10)
+gd.configure_selection(selection_mode='single',use_checkbox=True)
+gridoptions = gd.build()
+grid_table = AgGrid(dfgrid, fit_columns_on_grid_load=True, gridOptions=gridoptions,columns_auto_size_mode=ColumnsAutoSizeMode.FIT_CONTENTS)
+
+try:
+	row = grid_table["selected_rows"][0]
+	ind = row['_selectedRowNodeInfo']['nodeRowIndex']
+	dfshow = dfdis[['Category','Workout Type','Body Part','Date','Duration','Calories','Avg BPM','Max BPM']].loc[ind]
+	st.table(dfshow)
+	# hrdata = dfdis['heartRateData'][ind]
+	hrdata = pd.DataFrame(json.loads(dfdis['heartRateData'][ind]))
+	hrdata['date'] = hrdata['date'].apply(lambda x: datetime.datetime.strptime(x[0:18],"%Y-%m-%d %H:%M:%S"))
+	#st.write(hrdata)
+	source = hrdata
+	bottom = min(hrdata['qty'])
+	top = max(hrdata['qty'])
+	line = alt.Chart(source).mark_line().encode(
+	    x='date:T',
+	    y=alt.Y(field='qty', type='quantitative', aggregate='max',title="BPM", scale=alt.Scale(domainMin=bottom,domainMax=top))
+	    )
+	st.altair_chart(line, use_container_width=True)
+
+except:
+ 	st.error("Select a workout to see more details!")
+
+
+
+
+
+
